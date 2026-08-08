@@ -1,3 +1,4 @@
+import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -32,12 +33,12 @@ android {
     // generate the keystore and what to put in local.properties.
     signingConfigs {
         create("release") {
-            val keystoreProps = java.util.Properties()
+            val keystoreProps = Properties()
             val keystorePropsFile = rootProject.file("local.properties")
             if (keystorePropsFile.exists()) {
                 keystoreProps.load(keystorePropsFile.inputStream())
             }
-            storeFile = keystoreProps["RELEASE_STORE_FILE"]?.let { file(it) }
+            storeFile = keystoreProps["RELEASE_STORE_FILE"]?.let {path-> file(path) }
             storePassword = keystoreProps["RELEASE_STORE_PASSWORD"] as String?
             keyAlias = keystoreProps["RELEASE_KEY_ALIAS"] as String?
             keyPassword = keystoreProps["RELEASE_KEY_PASSWORD"] as String?
