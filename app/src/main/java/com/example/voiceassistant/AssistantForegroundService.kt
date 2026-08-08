@@ -111,7 +111,7 @@ class AssistantForegroundService : Service() {
         updateNotification("Listening for your command...")
         wakeWordEngine?.pause() // free the mic for SpeechRecognizer
         serviceScope.launch{
-            delay(400)
+            delay(700)
             sttEngine?.startListening()
         }
     }

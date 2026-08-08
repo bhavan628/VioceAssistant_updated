@@ -81,10 +81,12 @@ class WakeWordEngine(
 
     fun pause() {
         speechService?.stop()
+        speechService?.shutdown()
+        speechService = null
     }
 
     fun resume() {
-        recognitionListener?.let { speechService?.startListening(it) }
+        model?.let { startListening(it) }
     }
 
     fun release() {
