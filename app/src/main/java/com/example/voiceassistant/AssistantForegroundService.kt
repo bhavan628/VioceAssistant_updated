@@ -55,7 +55,7 @@ class AssistantForegroundService : Service() {
 
         wakeWordEngine = WakeWordEngine(
             context = this,
-            wakePhrase = "hey assistant",
+            wakePhrase = "arey",
             onWakeWordDetected = { onWakeWordDetected() },
             onError = { message -> updateNotification("Wake word engine error: $message") }
 )
