@@ -116,14 +116,14 @@ class AssistantForegroundService : Service() {
         // starting anything mic-related immediately after can collide with it. The
         // delay handles that; speaking "Yes?" afterward gives an audible cue for when
         // to actually start talking, instead of silently starting to listen.
-serviceScope.launch {
-    delay(700)
-    ttsEngine?.speak("Yes?") {
         serviceScope.launch {
-            sttEngine?.startListening()
+            delay(700)
+            ttsEngine?.speak("Yes?") {
+                 serviceScope.launch {
+                     sttEngine?.startListening()
+                 }
+            }
         }
-    }
-}
     /** Called once SpeechRecognizer returns text. */
     private fun onCommandTextReady(commandText: String) {
         state = State.CLASSIFYING
