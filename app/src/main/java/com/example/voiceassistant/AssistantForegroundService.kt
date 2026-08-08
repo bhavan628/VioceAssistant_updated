@@ -54,8 +54,9 @@ class AssistantForegroundService : Service() {
             context = this,
             onResult = { text -> onCommandTextReady(text) },
             onError = { message ->
-                updateNotification("Didn't catch that. Listening for wake word...")
-                onCommandHandled()
+                updateNotification("STT error: $message")
+                state = State.SPEAKING
+                ttsEngine?.speak("Sorry, I didn't catch that.")
             }
         )
 
@@ -100,6 +101,7 @@ class AssistantForegroundService : Service() {
             delay(700)
             ttsEngine?.speak("Yes?") {
                 serviceScope.launch {
+                    delay(300)
                     sttEngine?.startListening()
                 }
             }
@@ -173,4 +175,3 @@ class AssistantForegroundService : Service() {
         private const val NOTIFICATION_ID = 1001
     }
 }
-
