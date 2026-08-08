@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.voiceassistant.handlers.AlarmHandler
 import com.example.voiceassistant.handlers.CalculationHandler
@@ -109,7 +110,10 @@ class AssistantForegroundService : Service() {
         state = State.CAPTURING_COMMAND
         updateNotification("Listening for your command...")
         wakeWordEngine?.pause() // free the mic for SpeechRecognizer
-        sttEngine?.startListening()
+        serviceScope.launch{
+            delay(400)
+            sttEngine?.startListening()
+        }
     }
 
     /** Called once SpeechRecognizer returns text. */
