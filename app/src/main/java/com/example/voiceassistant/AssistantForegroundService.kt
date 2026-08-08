@@ -119,8 +119,9 @@ class AssistantForegroundService : Service() {
         serviceScope.launch {
             delay(700)
             ttsEngine?.speak("Yes?") {
-                sttEngine?.startListening()
-            }
+                serviceScope.launch{
+                    sttEngine?.startListening()
+                }
         }
     }
 
