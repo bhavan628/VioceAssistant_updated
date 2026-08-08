@@ -83,17 +83,18 @@ object AlarmHandler {
     /** Handles "7 30", "7:30", "seven thirty", "half past seven" style inputs loosely.
      *  Returns 24-hour (hour, minute) or null if nothing recognizable was found. */
     private fun parseTime(text: String): Pair<Int, Int>? {
-        val digitMatch = Regex("""(\d{1,2})[:\s.](\d{2})""").find(text)
+        val normalized = NumberWords.normalize(text)
+        val digitMatch = Regex("""(\d{1,2})[:\s.](\d{2})""").find(normalized)
         if (digitMatch != null) {
             val h = digitMatch.groupValues[1].toInt()
             val m = digitMatch.groupValues[2].toInt()
-            return normalizeAmPm(h, m, text)
+            return normalizeAmPm(h, m, normalized)
         }
 
-        val hourOnly = Regex("""\b(\d{1,2})\s*(am|pm)?\b""").find(text)
+        val hourOnly = Regex("""\b(\d{1,2})\s*(am|pm)?\b""").find(normalized)
         if (hourOnly != null) {
             val h = hourOnly.groupValues[1].toIntOrNull() ?: return null
-            return normalizeAmPm(h, 0, text)
+            return normalizeAmPm(h, 0, normalized)
         }
         return null
     }

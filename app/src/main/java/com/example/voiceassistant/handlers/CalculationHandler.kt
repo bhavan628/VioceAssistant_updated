@@ -20,7 +20,7 @@ object CalculationHandler {
     )
 
     fun handle(remainder: String): String {
-        val normalized = normalize(remainder)
+        val normalized = normalize(NumberWords.normalize(remainder))
         val expression = extractExpression(normalized)
             ?: return "I couldn't work out a calculation from that"
 

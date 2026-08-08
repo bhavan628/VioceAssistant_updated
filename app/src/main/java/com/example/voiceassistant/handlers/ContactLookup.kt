@@ -38,7 +38,7 @@ object ContactLookup {
             }
         }
 
-        val threshold = (target.length * 0.5).toInt().coerceAtLeast(2)
+        val threshold = (target.length * 0.65).toInt().coerceAtLeast(3)
         return if (bestScore <= threshold) best else null
     }
 

@@ -55,10 +55,11 @@ class AssistantForegroundService : Service() {
 
         wakeWordEngine = WakeWordEngine(
             context = this,
-            wakePhrase = "arey",
+            wakePhrase = "hello", // customize this to your chosen wake phrase, lowercase
             onWakeWordDetected = { onWakeWordDetected() },
             onError = { message -> updateNotification("Wake word engine error: $message") }
-)
+        )
+
         sttEngine = SttEngine(
             context = this,
             onResult = { text -> onCommandTextReady(text) },
@@ -110,7 +111,10 @@ class AssistantForegroundService : Service() {
         state = State.CAPTURING_COMMAND
         updateNotification("Listening for your command...")
         wakeWordEngine?.pause() // free the mic for SpeechRecognizer
-        serviceScope.launch{
+        // Vosk's stop() doesn't release the AudioRecord instantaneously — starting
+        // SpeechRecognizer immediately after can collide with it still holding the mic.
+        // A short delay gives Android time to fully hand the mic over.
+        serviceScope.launch {
             delay(700)
             sttEngine?.startListening()
         }

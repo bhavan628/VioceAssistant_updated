@@ -61,7 +61,10 @@ object MessageHandler {
 
     private fun sendViaSms(context: Context, contact: ContactLookup.Contact, text: String): String {
         return try {
-            val smsManager = context.getSystemService(SmsManager::class.java)
+            // getDefault() works on every Android version; the newer
+            // context.getSystemService(SmsManager::class.java) lookup only exists on
+            // API 31+ and was silently failing on older phones.
+            val smsManager = SmsManager.getDefault()
             smsManager.sendTextMessage(contact.phoneNumber, null, text, null, null)
             "Message sent to ${contact.name}"
         } catch (e: Exception) {

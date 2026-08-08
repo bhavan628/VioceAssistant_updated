@@ -61,6 +61,11 @@ class SttEngine(
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            // Gives more room for slower/paused speech before Android decides you're
+            // done talking and cuts off — defaults are quite aggressive (~1-2s).
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 3000)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 5000)
             // Keeps this fully headless — SpeechRecognizer works without any visible UI
             // when driven this way (unlike RecognizerIntent.ACTION_RECOGNIZE_SPEECH
             // fired via startActivityForResult, which WOULD show the mic dialog).

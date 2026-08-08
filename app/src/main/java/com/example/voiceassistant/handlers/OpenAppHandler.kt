@@ -42,8 +42,9 @@ object OpenAppHandler {
         }
 
         // Cutoff: if even the closest match is too different from what was spoken,
-        // treat it as no match rather than opening a random app.
-        val threshold = (spoken.length * 0.5).toInt().coerceAtLeast(2)
+        // treat it as no match rather than opening a random app. Loosened from 0.5x
+        // to 0.65x since STT mishearing (e.g. "spotifyy", "you tube") needs more slack.
+        val threshold = (spoken.length * 0.65).toInt().coerceAtLeast(3)
         if (bestPackage == null || bestScore > threshold) {
             return "I couldn't find an app called $spoken"
         }

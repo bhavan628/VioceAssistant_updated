@@ -56,9 +56,10 @@ object MusicHandler {
     }
 
     private fun playViaSpotify(context: Context, query: String): String {
-        // Spotify's URI scheme: spotify:search:<query> opens search; combined with
-        // ACTION_VIEW and a play intent extra, most Spotify versions start playback
-        // on the top result directly.
+        // Honest limitation: Spotify's public URI scheme opens its search screen
+        // pre-filled with the query — it does NOT auto-play the top result without
+        // Spotify's paid Web API (OAuth + a backend). This used to claim "Playing X",
+        // which wasn't true; wording now matches what actually happens.
         val uri = Uri.parse("spotify:search:${Uri.encode(query)}")
         val intent = Intent(Intent.ACTION_VIEW, uri).apply {
             setPackage(SPOTIFY_PACKAGE)
@@ -66,9 +67,9 @@ object MusicHandler {
         }
         return try {
             context.startActivity(intent)
-            "Playing $query on Spotify"
+            "Opened Spotify search for $query — tap the top result to play it"
         } catch (e: Exception) {
-            "Found Spotify but couldn't start playback for $query"
+            "Found Spotify but couldn't open search for $query"
         }
     }
 
@@ -80,9 +81,9 @@ object MusicHandler {
         }
         return try {
             context.startActivity(intent)
-            "Playing $query on YouTube Music"
+            "Opened YouTube Music search for $query — tap the top result to play it"
         } catch (e: Exception) {
-            "Found YouTube Music but couldn't start playback for $query"
+            "Found YouTube Music but couldn't open search for $query"
         }
     }
 
