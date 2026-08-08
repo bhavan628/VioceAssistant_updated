@@ -22,26 +22,15 @@ import com.example.voiceassistant.handlers.NewsHandler
 import com.example.voiceassistant.handlers.OpenAppHandler
 import com.example.voiceassistant.handlers.TimeHandler
 
-/**
- * Long-running foreground service. This is the skeleton for the v2 (full-feature)
- * build — the state machine already has slots for the intent classifier and command
- * execution steps that come later, so we don't have to restructure it each time.
- *
- * Wiring added in later steps:
- *  - Step 3: WakeWordEngine (Porcupine) in startWakeWordListening()/onWakeWordDetected()
- *  - Step 4: SpeechRecognizer + TextToSpeech in onWakeWordDetected()/onCommandTextReady()
- *  - Step 5: IntentClassifier in onCommandTextReady()
- *  - Step 6: individual command handlers in executeCommand()
- */
 class AssistantForegroundService : Service() {
 
     enum class State {
         IDLE,
         LISTENING_FOR_WAKE_WORD,
-        CAPTURING_COMMAND,     // SpeechRecognizer active
-        CLASSIFYING,           // text -> intent category
-        EXECUTING_COMMAND,     // running the matched handler
-        SPEAKING                // TTS reply in progress
+        CAPTURING_COMMAND,
+        CLASSIFYING,
+        EXECUTING_COMMAND,
+        SPEAKING
     }
 
     private var state: State = State.IDLE
@@ -56,7 +45,7 @@ class AssistantForegroundService : Service() {
 
         wakeWordEngine = WakeWordEngine(
             context = this,
-            wakePhrase = "hello", // customize this to your chosen wake phrase, lowercase
+            wakePhrase = "hello",
             onWakeWordDetected = { onWakeWordDetected() },
             onError = { message -> updateNotification("Wake word engine error: $message") }
         )
@@ -65,8 +54,6 @@ class AssistantForegroundService : Service() {
             context = this,
             onResult = { text -> onCommandTextReady(text) },
             onError = { message ->
-                // Couldn't capture a command — just go back to listening rather than
-                // getting stuck in CAPTURING_COMMAND.
                 updateNotification("Didn't catch that. Listening for wake word...")
                 onCommandHandled()
             }
@@ -74,7 +61,7 @@ class AssistantForegroundService : Service() {
 
         ttsEngine = TtsEngine(
             context = this,
-            onReady = { /* engine warmed up, nothing to do yet */ },
+            onReady = { },
             onSpeechFinished = { onCommandHandled() }
         )
     }
@@ -95,8 +82,6 @@ class AssistantForegroundService : Service() {
         serviceScope.cancel()
     }
 
-    // ---- State transitions ----
-
     private fun startWakeWordListening() {
         state = State.LISTENING_FOR_WAKE_WORD
         updateNotification("Listening for wake word...")
@@ -107,38 +92,30 @@ class AssistantForegroundService : Service() {
         wakeWordEngine?.pause()
     }
 
-    /** Fired by WakeWordEngine's callback (background thread) when the keyword is heard. */
     private fun onWakeWordDetected() {
         state = State.CAPTURING_COMMAND
         updateNotification("Yes? Listening for your command...")
-        wakeWordEngine?.pause() // free the mic for TTS, then SpeechRecognizer
-        // Vosk's stop()/shutdown() doesn't release the AudioRecord instantaneously —
-        // starting anything mic-related immediately after can collide with it. The
-        // delay handles that; speaking "Yes?" afterward gives an audible cue for when
-        // to actually start talking, instead of silently starting to listen.
+        wakeWordEngine?.pause()
         serviceScope.launch {
             delay(700)
             ttsEngine?.speak("Yes?") {
-                 serviceScope.launch {
-                     sttEngine?.startListening()
-                 }
+                serviceScope.launch {
+                    sttEngine?.startListening()
+                }
             }
         }
-    /** Called once SpeechRecognizer returns text. */
+    }
+
     private fun onCommandTextReady(commandText: String) {
         state = State.CLASSIFYING
         val result = IntentClassifier.classify(commandText)
         executeCommand(result.category, result.remainder)
     }
 
-    /** Called once the classifier has picked a category. */
     private fun executeCommand(category: CommandCategory, remainder: String) {
         state = State.EXECUTING_COMMAND
         updateNotification("Working on it...")
 
-        // NEWS needs a network call. NewsHandler is callback-based (OkHttp's own async
-        // dispatch), and its callback fires on a background thread — hop back onto the
-        // service's main-thread scope before touching TTS/state.
         if (category == CommandCategory.NEWS) {
             NewsHandler.handle(this) { reply ->
                 serviceScope.launch {
@@ -158,21 +135,18 @@ class AssistantForegroundService : Service() {
             CommandCategory.CALL -> CallHandler.handle(this, remainder)
             CommandCategory.CALCULATION -> CalculationHandler.handle(remainder)
             CommandCategory.LOCK_SCREEN -> LockScreenHandler.handle(this)
-            CommandCategory.NEWS -> "" // unreachable, handled above
+            CommandCategory.NEWS -> ""
             CommandCategory.UNKNOWN -> "Sorry, I didn't understand that command."
         }
         state = State.SPEAKING
         ttsEngine?.speak(reply)
     }
 
-    /** Called once the TTS reply finishes playing. */
     private fun onCommandHandled() {
         state = State.LISTENING_FOR_WAKE_WORD
         updateNotification("Listening for wake word...")
         wakeWordEngine?.resume()
     }
-
-    // ---- Notification plumbing ----
 
     private fun buildNotification(text: String): Notification {
         val pendingIntent = PendingIntent.getActivity(
@@ -185,7 +159,7 @@ class AssistantForegroundService : Service() {
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pendingIntent)
-            .setOngoing(true) // user cannot swipe it away while the service runs
+            .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
@@ -199,3 +173,4 @@ class AssistantForegroundService : Service() {
         private const val NOTIFICATION_ID = 1001
     }
 }
+
