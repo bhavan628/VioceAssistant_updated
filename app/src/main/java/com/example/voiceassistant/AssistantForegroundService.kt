@@ -54,14 +54,10 @@ class AssistantForegroundService : Service() {
 
         wakeWordEngine = WakeWordEngine(
             context = this,
-            // TODO: move out of source before shipping — BuildConfig field from
-            // local.properties, never a hardcoded key in code you hand to a client.
-            accessKey = "YOUR_PICOVOICE_ACCESS_KEY",
-            keywordAssetPath = "hey-assistant_android.ppn",
+            wakePhrase = "hey assistant",
             onWakeWordDetected = { onWakeWordDetected() },
             onError = { message -> updateNotification("Wake word engine error: $message") }
-        )
-
+)
         sttEngine = SttEngine(
             context = this,
             onResult = { text -> onCommandTextReady(text) },
