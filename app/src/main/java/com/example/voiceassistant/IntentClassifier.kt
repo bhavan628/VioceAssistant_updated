@@ -12,7 +12,7 @@ package com.example.voiceassistant
  * else in the app needs to change.
  */
 enum class CommandCategory {
-    TIME, MUSIC, NEWS, OPEN_APP, ALARM, MESSAGE, CALL, CALCULATION, UNKNOWN
+    TIME, MUSIC, NEWS, OPEN_APP, ALARM, MESSAGE, CALL, CALCULATION, LOCK_SCREEN, UNKNOWN
 }
 
 /** category + whatever's left of the command text after the trigger keyword, for the
@@ -29,6 +29,9 @@ object IntentClassifier {
         listOf("news", "headlines") to CommandCategory.NEWS,
         listOf("open") to CommandCategory.OPEN_APP,
         listOf("set an alarm", "set alarm", "wake me", "remind me") to CommandCategory.ALARM,
+        // Placed before CALL/MESSAGE — "lock phone" contains "phone", which would
+        // otherwise get caught by CALL's "phone" trigger first.
+        listOf("lock the screen", "lock screen", "lock my phone", "lock phone") to CommandCategory.LOCK_SCREEN,
         listOf("message", "text", "whatsapp") to CommandCategory.MESSAGE,
         listOf("call", "phone", "dial") to CommandCategory.CALL,
         listOf("calculate", "what is", "what's", "plus", "minus", "times", "divided by") to CommandCategory.CALCULATION

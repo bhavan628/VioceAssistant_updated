@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import com.example.voiceassistant.handlers.AlarmHandler
 import com.example.voiceassistant.handlers.CalculationHandler
 import com.example.voiceassistant.handlers.CallHandler
+import com.example.voiceassistant.handlers.LockScreenHandler
 import com.example.voiceassistant.handlers.MusicHandler
 import com.example.voiceassistant.handlers.MessageHandler
 import com.example.voiceassistant.handlers.NewsHandler
@@ -109,14 +110,17 @@ class AssistantForegroundService : Service() {
     /** Fired by WakeWordEngine's callback (background thread) when the keyword is heard. */
     private fun onWakeWordDetected() {
         state = State.CAPTURING_COMMAND
-        updateNotification("Listening for your command...")
-        wakeWordEngine?.pause() // free the mic for SpeechRecognizer
-        // Vosk's stop() doesn't release the AudioRecord instantaneously — starting
-        // SpeechRecognizer immediately after can collide with it still holding the mic.
-        // A short delay gives Android time to fully hand the mic over.
+        updateNotification("Yes? Listening for your command...")
+        wakeWordEngine?.pause() // free the mic for TTS, then SpeechRecognizer
+        // Vosk's stop()/shutdown() doesn't release the AudioRecord instantaneously —
+        // starting anything mic-related immediately after can collide with it. The
+        // delay handles that; speaking "Yes?" afterward gives an audible cue for when
+        // to actually start talking, instead of silently starting to listen.
         serviceScope.launch {
             delay(700)
-            sttEngine?.startListening()
+            ttsEngine?.speak("Yes?") {
+                sttEngine?.startListening()
+            }
         }
     }
 
@@ -153,6 +157,7 @@ class AssistantForegroundService : Service() {
             CommandCategory.MESSAGE -> MessageHandler.handle(this, remainder)
             CommandCategory.CALL -> CallHandler.handle(this, remainder)
             CommandCategory.CALCULATION -> CalculationHandler.handle(remainder)
+            CommandCategory.LOCK_SCREEN -> LockScreenHandler.handle(this)
             CommandCategory.NEWS -> "" // unreachable, handled above
             CommandCategory.UNKNOWN -> "Sorry, I didn't understand that command."
         }

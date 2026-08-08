@@ -29,17 +29,20 @@ class TtsEngine(
         }
     }
 
-    fun speak(text: String) {
+    /** onDone lets a specific call override what happens after speaking finishes —
+     *  e.g. the "Yes?" prompt starts SpeechRecognizer next, while a final reply
+     *  resumes wake-word listening (the default onSpeechFinished). */
+    fun speak(text: String, onDone: (() -> Unit)? = null) {
         if (!isReady) return
         val utteranceId = UUID.randomUUID().toString()
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
             override fun onDone(utteranceId: String?) {
-                onSpeechFinished()
+                (onDone ?: onSpeechFinished).invoke()
             }
             @Deprecated("Deprecated in API 21+, required for older devices")
             override fun onError(utteranceId: String?) {
-                onSpeechFinished()
+                (onDone ?: onSpeechFinished).invoke()
             }
         })
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)

@@ -1,5 +1,7 @@
 package com.example.voiceassistant
 
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -11,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.example.voiceassistant.handlers.LockScreenAdminReceiver
 
 /**
  * The ONLY screen in this app. It requests permissions once, requests the battery
@@ -89,9 +92,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startAssistantService() {
+        requestDeviceAdminForLockScreen()
         val intent = Intent(this, AssistantForegroundService::class.java)
         ContextCompat.startForegroundService(this, intent)
         detailText.text = "Assistant is running in the background.\nCheck your notification shade."
         Toast.makeText(this, "Assistant is now running in the background.", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * One-time system prompt so "lock the screen" can work — Android requires explicit
+     * device-admin approval for this, there's no regular runtime permission for it.
+     * Declining just means that one command replies "I need permission" instead of
+     * working; everything else in the app is unaffected.
+     */
+    private fun requestDeviceAdminForLockScreen() {
+        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(this, LockScreenAdminReceiver::class.java)
+        if (!dpm.isAdminActive(adminComponent)) {
+            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+                putExtra(
+                    DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                    "Needed so the assistant can lock your screen on request."
+                )
+            }
+            startActivity(intent)
+        }
     }
 }
