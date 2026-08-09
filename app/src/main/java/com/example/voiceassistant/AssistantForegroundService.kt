@@ -37,7 +37,6 @@ class AssistantForegroundService : Service() {
     private var wakeWordEngine: WakeWordEngine? = null
     private var sttEngine: SttEngine? = null
     private var ttsEngine: TtsEngine? = null
-    private var sttRetried = false
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     override fun onCreate() {
@@ -55,28 +54,16 @@ class AssistantForegroundService : Service() {
             wakePhrase = "hello",
             onWakeWordDetected = { onWakeWordDetected() },
             onModelReady = { model ->
-                // Build SttEngine from the SAME loaded model WakeWordEngine just
-                // unpacked — avoids a second, slower StorageService.unpack() call
-                // every time a command is captured.
                 sttEngine = SttEngine(
                     model = model,
-                    onResult = { text ->
-                        sttRetried = false
-                        onCommandTextReady(text)
-                    },
-                    onError = { message ->
-                        if (!sttRetried) {
-                            sttRetried = true
-                            updateNotification("Retrying...")
-                            serviceScope.launch {
-                                delay(400)
-                                sttEngine?.startListening()
-                            }
-                        } else {
-                            sttRetried = false
-                            updateNotification("STT error: $message")
-                            state = State.SPEAKING
-                            ttsEngine?.speak("Sorry, I didn't catch that.")
+                    onResult = { text -> onCommandTextReady(text) },
+                    onError = {
+                        // No spoken failure message anymore — just silently go back
+                        // to listening for the wake word.
+                        if (state == State.CAPTURING_COMMAND) {
+                            state = State.LISTENING_FOR_WAKE_WORD
+                            updateNotification("Listening for wake word...")
+                            wakeWordEngine?.resume()
                         }
                     }
                 )
@@ -111,17 +98,23 @@ class AssistantForegroundService : Service() {
         wakeWordEngine?.pause()
     }
 
+    /** No "Yes?" prompt anymore — goes straight from wake word to listening for the
+     *  command. Waits up to 4 seconds for a command; if nothing comes in, silently
+     *  stops listening and returns to waiting for the wake word — no spoken message. */
     private fun onWakeWordDetected() {
         state = State.CAPTURING_COMMAND
-        updateNotification("Yes? Listening for your command...")
+        updateNotification("Listening for your command...")
         wakeWordEngine?.pause()
         serviceScope.launch {
-            delay(700)
-            ttsEngine?.speak("Yes?") {
-                serviceScope.launch {
-                    delay(1000)
-                    sttEngine?.startListening()
-                }
+            delay(700) // mic handoff time, same as before
+            sttEngine?.startListening()
+
+            delay(4000) // 4-second window to give a command
+            if (state == State.CAPTURING_COMMAND) {
+                sttEngine?.stopListening()
+                state = State.LISTENING_FOR_WAKE_WORD
+                updateNotification("Listening for wake word...")
+                wakeWordEngine?.resume()
             }
         }
     }
