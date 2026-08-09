@@ -149,7 +149,7 @@ class AssistantForegroundService : Service() {
             CommandCategory.CALCULATION -> CalculationHandler.handle(remainder)
             CommandCategory.LOCK_SCREEN -> LockScreenHandler.handle(this)
             CommandCategory.NEWS -> ""
-            CommandCategory.UNKNOWN -> "Sorry, I didn't understand that command."
+            CommandCategory.UNKNOWN -> "Sorry"
         }
         state = State.SPEAKING
         ttsEngine?.speak(reply)
