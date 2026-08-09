@@ -33,11 +33,10 @@ object AlarmHandler {
             putExtra(AlarmClock.EXTRA_HOUR, parsed.first)
             putExtra(AlarmClock.EXTRA_MINUTES, parsed.second)
             putExtra(AlarmClock.EXTRA_MESSAGE, "Voice Assistant reminder")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
         return if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(intent)
+            ActivityLauncher.launch(context, intent)
             val displayHour = if (parsed.first % 12 == 0) 12 else parsed.first % 12
             val ampm = if (parsed.first < 12) "AM" else "PM"
             "Alarm set for %d:%02d %s".format(displayHour, parsed.second, ampm)

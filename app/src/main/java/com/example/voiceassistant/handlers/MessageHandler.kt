@@ -78,11 +78,9 @@ object MessageHandler {
         // API, so this necessarily brings up its UI (another "action needs it" case).
         val phone = contact.phoneNumber.filter { it.isDigit() }
         val uri = Uri.parse("https://wa.me/$phone?text=${Uri.encode(text)}")
-        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri).apply {
-            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
         return if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(intent)
+            ActivityLauncher.launch(context, intent)
             "Opening WhatsApp to message ${contact.name}"
         } else {
             "WhatsApp isn't installed"

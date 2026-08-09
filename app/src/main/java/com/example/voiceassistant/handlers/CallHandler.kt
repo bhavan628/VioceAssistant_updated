@@ -30,12 +30,10 @@ object CallHandler {
         val hasCallPermission = hasPermission(context, Manifest.permission.CALL_PHONE)
         val action = if (hasCallPermission) Intent.ACTION_CALL else Intent.ACTION_DIAL
 
-        val intent = Intent(action, Uri.parse("tel:${contact.phoneNumber}")).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        val intent = Intent(action, Uri.parse("tel:${contact.phoneNumber}"))
 
         return try {
-            context.startActivity(intent)
+            ActivityLauncher.launch(context, intent)
             if (hasCallPermission) {
                 "Calling ${contact.name}"
             } else {

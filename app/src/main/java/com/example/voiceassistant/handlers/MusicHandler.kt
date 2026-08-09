@@ -63,10 +63,9 @@ object MusicHandler {
         val uri = Uri.parse("spotify:search:${Uri.encode(query)}")
         val intent = Intent(Intent.ACTION_VIEW, uri).apply {
             setPackage(SPOTIFY_PACKAGE)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         return try {
-            context.startActivity(intent)
+            ActivityLauncher.launch(context, intent)
             "Opened Spotify search for $query — tap the top result to play it"
         } catch (e: Exception) {
             "Found Spotify but couldn't open search for $query"
@@ -77,10 +76,9 @@ object MusicHandler {
         val uri = Uri.parse("https://music.youtube.com/search?q=${Uri.encode(query)}")
         val intent = Intent(Intent.ACTION_VIEW, uri).apply {
             setPackage(YT_MUSIC_PACKAGE)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         return try {
-            context.startActivity(intent)
+            ActivityLauncher.launch(context, intent)
             "Opened YouTube Music search for $query — tap the top result to play it"
         } catch (e: Exception) {
             "Found YouTube Music but couldn't open search for $query"
