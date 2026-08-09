@@ -51,8 +51,21 @@ object OpenAppHandler {
 
         val launchIntent = pm.getLaunchIntentForPackage(bestPackage)
         return if (launchIntent != null) {
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(launchIntent)
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            try {
+                // Sending via PendingIntent is treated more leniently by Android's
+                // Background Activity Launch restrictions than a raw startActivity()
+                // called from a long-running service — a plain startActivity() here
+                // was being silently dropped by the OS with no error, even though the
+                // spoken confirmation still fired.
+                val pendingIntent = android.app.PendingIntent.getActivity(
+                    context, 0, launchIntent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                )
+                pendingIntent.send()
+            } catch (e: android.app.PendingIntent.CanceledException) {
+                context.startActivity(launchIntent)
+            }
             "Opening $bestLabel"
             // Note: this is the one case in the whole app where UI intentionally
             // appears — the requirement was "no UI unless the action itself needs it,

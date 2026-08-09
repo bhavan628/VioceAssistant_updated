@@ -93,10 +93,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun startAssistantService() {
         requestDeviceAdminForLockScreen()
+        requestOverlayPermission()
         val intent = Intent(this, AssistantForegroundService::class.java)
         ContextCompat.startForegroundService(this, intent)
         detailText.text = "Assistant is running in the background.\nCheck your notification shade."
         Toast.makeText(this, "Assistant is now running in the background.", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * One-time system prompt so open_app/music commands can actually launch other
+     * apps from the background service — without "display over other apps", Android
+     * 10+'s Background Activity Launch restriction silently drops the launch, with no
+     * error the app can detect. Declining just means those two commands will speak a
+     * confirmation but not actually open anything; everything else still works.
+     */
+    private fun requestOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivity(intent)
+        }
     }
 
     /**

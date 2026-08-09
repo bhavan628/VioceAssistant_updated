@@ -45,6 +45,12 @@
          AlarmClock intent (see alarm handler notes later) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <!-- Lets the app launch other apps (open_app, music) from the background
+         service without the OS silently blocking it — Android 10+'s Background
+         Activity Launch restriction otherwise drops startActivity() calls made
+         from a long-running service with no visible error. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <application
         android:name=".VoiceAssistantApp"
         android:allowBackup="true"
