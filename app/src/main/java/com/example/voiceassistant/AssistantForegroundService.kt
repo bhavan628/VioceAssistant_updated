@@ -37,33 +37,51 @@ class AssistantForegroundService : Service() {
     private var wakeWordEngine: WakeWordEngine? = null
     private var sttEngine: SttEngine? = null
     private var ttsEngine: TtsEngine? = null
+    private var sttRetried = false
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     override fun onCreate() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, buildNotification("Assistant is starting..."))
 
-        wakeWordEngine = WakeWordEngine(
-            context = this,
-            wakePhrase = "hello",
-            onWakeWordDetected = { onWakeWordDetected() },
-            onError = { message -> updateNotification("Wake word engine error: $message") }
-        )
-
-        sttEngine = SttEngine(
-            context = this,
-            onResult = { text -> onCommandTextReady(text) },
-            onError = { message ->
-                updateNotification("STT error: $message")
-                state = State.SPEAKING
-                ttsEngine?.speak("Sorry, I didn't catch that.")
-            }
-        )
-
         ttsEngine = TtsEngine(
             context = this,
             onReady = { },
             onSpeechFinished = { onCommandHandled() }
+        )
+
+        wakeWordEngine = WakeWordEngine(
+            context = this,
+            wakePhrase = "hello",
+            onWakeWordDetected = { onWakeWordDetected() },
+            onModelReady = { model ->
+                // Build SttEngine from the SAME loaded model WakeWordEngine just
+                // unpacked — avoids a second, slower StorageService.unpack() call
+                // every time a command is captured.
+                sttEngine = SttEngine(
+                    model = model,
+                    onResult = { text ->
+                        sttRetried = false
+                        onCommandTextReady(text)
+                    },
+                    onError = { message ->
+                        if (!sttRetried) {
+                            sttRetried = true
+                            updateNotification("Retrying...")
+                            serviceScope.launch {
+                                delay(400)
+                                sttEngine?.startListening()
+                            }
+                        } else {
+                            sttRetried = false
+                            updateNotification("STT error: $message")
+                            state = State.SPEAKING
+                            ttsEngine?.speak("Sorry, I didn't catch that.")
+                        }
+                    }
+                )
+            },
+            onError = { message -> updateNotification("Wake word engine error: $message") }
         )
     }
 
@@ -101,7 +119,7 @@ class AssistantForegroundService : Service() {
             delay(700)
             ttsEngine?.speak("Yes?") {
                 serviceScope.launch {
-                    delay(300)
+                    delay(1000)
                     sttEngine?.startListening()
                 }
             }

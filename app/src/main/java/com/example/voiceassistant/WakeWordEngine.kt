@@ -35,6 +35,7 @@ class WakeWordEngine(
     private val context: Context,
     private val wakePhrase: String,          // e.g. "hey assistant" — lowercase, no punctuation
     private val onWakeWordDetected: () -> Unit,
+    private val onModelReady: (Model) -> Unit,
     private val onError: (String) -> Unit
 ) {
     private var model: Model? = null
@@ -48,6 +49,7 @@ class WakeWordEngine(
             context, "model", "model",
             { unpackedModel ->
                 model = unpackedModel
+                onModelReady(unpackedModel)
                 startListening(unpackedModel)
             },
             { exception ->

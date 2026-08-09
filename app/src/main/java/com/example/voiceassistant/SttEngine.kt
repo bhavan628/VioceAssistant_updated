@@ -1,37 +1,30 @@
 package com.example.voiceassistant
 
-import android.content.Context
 import android.util.Log
 import org.json.JSONObject
 import org.vosk.Model
 import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
 import org.vosk.android.SpeechService
-import org.vosk.android.StorageService
 
+/**
+ * Captures a single voice command as text using Vosk.
+ *
+ * Takes an already-loaded Model (shared from WakeWordEngine, which unpacks it once at
+ * startup) instead of calling StorageService.unpack() itself — that call was
+ * asynchronous and added unpredictable extra delay every time a command was
+ * captured, meaning actual mic listening often started after the caller had already
+ * finished speaking. Building the Recognizer/SpeechService from an in-memory Model is
+ * synchronous and effectively instant.
+ */
 class SttEngine(
-    private val context: Context,
+    private val model: Model,
     private val onResult: (String) -> Unit,
     private val onError: (String) -> Unit
 ) {
-    private var model: Model? = null
     private var speechService: SpeechService? = null
 
     fun startListening() {
-        StorageService.unpack(
-            context, "model", "model",
-            { unpackedModel ->
-                model = unpackedModel
-                beginListening(unpackedModel)
-            },
-            { exception ->
-                Log.e("SttEngine", "Failed to unpack Vosk model", exception)
-                onError(exception.message ?: "Failed to load speech model")
-            }
-        )
-    }
-
-    private fun beginListening(model: Model) {
         try {
             val recognizer = Recognizer(model, 16000.0f)
             val listener = object : RecognitionListener {
@@ -91,6 +84,5 @@ class SttEngine(
         speechService?.stop()
         speechService?.shutdown()
         speechService = null
-        model = null
     }
 }
