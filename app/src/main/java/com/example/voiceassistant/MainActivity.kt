@@ -94,6 +94,7 @@ class MainActivity : AppCompatActivity() {
     private fun startAssistantService() {
         requestDeviceAdminForLockScreen()
         requestOverlayPermission()
+        requestAccessibilityForTyping()
         val intent = Intent(this, AssistantForegroundService::class.java)
         ContextCompat.startForegroundService(this, intent)
         detailText.text = "Assistant is running in the background.\nCheck your notification shade."
@@ -135,6 +136,30 @@ class MainActivity : AppCompatActivity() {
                 )
             }
             startActivity(intent)
+        }
+    }
+
+    /**
+     * One-time settings prompt so "type" commands work — this is the ONLY way Android
+     * allows typing into whatever field currently has focus in any app. There's no
+     * regular permission dialog for this; the user must manually enable it in
+     * Settings > Accessibility, and Android deliberately shows a strong warning
+     * there since this class of permission can read on-screen content in any app.
+     * Declining just means the "type" command replies asking for it instead of
+     * working; everything else in the app is unaffected.
+     */
+    private fun requestAccessibilityForTyping() {
+        val enabledServices = Settings.Secure.getString(
+            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: ""
+        val serviceId = "$packageName/.handlers.TypingAccessibilityService"
+        if (!enabledServices.contains(serviceId)) {
+            Toast.makeText(
+                this,
+                "To enable typing: find Voice Assistant under Accessibility settings and turn it on",
+                Toast.LENGTH_LONG
+            ).show()
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
     }
 }

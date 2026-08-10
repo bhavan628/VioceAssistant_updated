@@ -1,0 +1,3 @@
+<resources>
+    <string name="accessibility_service_description">Lets Voice Assistant type text into whatever field is currently focused, when you say a "type" command.</string>
+</resources>

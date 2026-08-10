@@ -22,6 +22,7 @@ import com.example.voiceassistant.handlers.NewsHandler
 import com.example.voiceassistant.handlers.OpenAppHandler
 import com.example.voiceassistant.handlers.SearchHandler
 import com.example.voiceassistant.handlers.TimeHandler
+import com.example.voiceassistant.handlers.TypeHandler
 
 class AssistantForegroundService : Service() {
 
@@ -169,6 +170,7 @@ class AssistantForegroundService : Service() {
             CommandCategory.CALCULATION -> CalculationHandler.handle(remainder)
             CommandCategory.LOCK_SCREEN -> LockScreenHandler.handle(this)
             CommandCategory.SEARCH -> SearchHandler.handle(this, remainder)
+            CommandCategory.TYPE -> TypeHandler.handle(remainder)
             CommandCategory.NEWS -> "" // unreachable, handled above
             CommandCategory.UNKNOWN -> "" // unreachable, handled above
         }
