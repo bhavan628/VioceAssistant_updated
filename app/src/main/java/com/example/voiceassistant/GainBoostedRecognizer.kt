@@ -18,7 +18,7 @@ import kotlin.concurrent.thread
  */
 class GainBoostedRecognizer(
     private val recognizer: Recognizer,
-    private val gain: Float = 3.0f,
+    private val gain: Float = 1.6f,
     private val onResult: (String) -> Unit,
     private val onError: (String) -> Unit
 ) {

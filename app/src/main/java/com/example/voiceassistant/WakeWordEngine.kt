@@ -39,7 +39,7 @@ class WakeWordEngine(
             val recognizer = Recognizer(model, 16000.0f)
             capture = GainBoostedRecognizer(
                 recognizer = recognizer,
-                gain = 3.0f,
+                gain = 1.6f,
                 onResult = { json -> checkForWakePhrase(json) },
                 onError = { message -> onError(message) }
             )
