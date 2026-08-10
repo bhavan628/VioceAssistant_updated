@@ -120,13 +120,15 @@ object MusicHandler {
         val query = text.replace("spotify", "").trim()
 
         return if (query.isBlank()) {
-            // No specific song named — open Spotify itself, which shows Spotify's
-            // own recently-played on its home screen (real playback history that
-            // only Spotify has, not something this app can read directly).
+            // No specific song named — open Spotify itself (its recently-played is
+            // right there), then send a media-button PLAY signal to actually start
+            // audio rather than just sitting on the home screen waiting for a tap —
+            // same mechanism used for the local Music app path.
             val intent = context.packageManager.getLaunchIntentForPackage(SPOTIFY_PACKAGE)
                 ?: return "Couldn't open Spotify"
             ActivityLauncher.launch(context, intent)
-            "Opened Spotify — your recently played is right there"
+            sendPlayMediaButton(context)
+            "Opened Spotify and started playing"
         } else {
             val uri = Uri.parse("spotify:search:${Uri.encode(query)}")
             val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage(SPOTIFY_PACKAGE) }

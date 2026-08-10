@@ -51,6 +51,9 @@
          from a long-running service with no visible error. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Fast wake-word confirmation vibration -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:name=".VoiceAssistantApp"
         android:allowBackup="true"

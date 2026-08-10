@@ -44,7 +44,11 @@ object OpenAppHandler {
         // Cutoff: if even the closest match is too different from what was spoken,
         // treat it as no match rather than opening a random app. Loosened from 0.5x
         // to 0.65x since STT mishearing (e.g. "spotifyy", "you tube") needs more slack.
-        val threshold = (spoken.length * 0.65).toInt().coerceAtLeast(3)
+        // Loosened further — small speech models frequently mishear multi-syllable
+        // app names (Instagram, WhatsApp, Swiggy), and since this handler is silent
+        // by design, a too-strict threshold means silent failures with no way to
+        // tell mishearing from a genuine launch problem.
+        val threshold = (spoken.length * 0.75).toInt().coerceAtLeast(4)
         if (bestPackage == null || bestScore > threshold) {
             return "I couldn't find an app called $spoken"
         }

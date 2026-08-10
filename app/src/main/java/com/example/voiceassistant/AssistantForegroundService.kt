@@ -107,6 +107,9 @@ class AssistantForegroundService : Service() {
         state = State.CAPTURING_COMMAND
         updateNotification("Listening for your command...")
         wakeWordEngine?.pause()
+        // Fast, non-verbal confirmation the wake word registered — fires instantly,
+        // unlike speaking a word out loud, so it doesn't eat into the response time.
+        vibrateConfirmation()
         serviceScope.launch {
             delay(200) // mic handoff — much shorter now that we use direct AudioRecord
                        // capture (synchronous stop/release) instead of Vosk's own
@@ -178,6 +181,23 @@ class AssistantForegroundService : Service() {
         }
         state = State.SPEAKING
         ttsEngine?.speak(reply)
+    }
+
+    private fun vibrateConfirmation() {
+        try {
+            val vibrator = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                val manager = getSystemService(android.os.VibratorManager::class.java)
+                manager.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(VIBRATOR_SERVICE) as android.os.Vibrator
+            }
+            vibrator.vibrate(
+                android.os.VibrationEffect.createOneShot(120, android.os.VibrationEffect.DEFAULT_AMPLITUDE)
+            )
+        } catch (e: Exception) {
+            // Non-critical — the flow continues fine without haptic feedback.
+        }
     }
 
     private fun onCommandHandled() {
