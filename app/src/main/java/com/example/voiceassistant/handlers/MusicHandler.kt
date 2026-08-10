@@ -5,41 +5,77 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.net.Uri
+import android.view.KeyEvent
 import java.io.File
 
 /**
- * Handler 4/8: music. Split into offline (local files) and online (Spotify/YT Music)
- * per the user's spec:
- *  - "play music" / "play <song>" with no mention of Spotify -> offline first, falls
- *    back to online only if nothing local matches.
- *  - "play spotify music" / "play <song> on spotify" -> online via Spotify directly.
+ * Two completely separate paths, no fallback between them:
+ *  - "play music" (no "spotify" mentioned) -> opens the device's own local Music
+ *    app and asks it to start playing. NEVER touches Spotify.
+ *  - "play spotify music" -> opens Spotify specifically, recently-played priority.
  *
- * "Recently played" priority is approximated honestly, since neither this app nor
- * Android exposes real playback history to read:
- *  - Offline: local files sorted by lastModified() (most recently added/downloaded)
- *    as the closest available proxy for "recent".
- *  - Online, no song named: opens Spotify's own home screen, which shows Spotify's
- *    actual recently-played (data this app has no way to query directly).
+ * Previous version had a bug: plain "play music" would silently fall back to
+ * opening Spotify if no local file matched — that's removed. The two paths are now
+ * fully independent, matching what was actually asked for.
  */
 object MusicHandler {
 
     private const val SPOTIFY_PACKAGE = "com.spotify.music"
-    private const val YT_MUSIC_PACKAGE = "com.google.android.apps.youtube.music"
-
     private val genericFillers = setOf("music", "song", "a", "some", "spotify", "on", "from", "please")
 
     fun handle(context: Context, remainder: String): String {
         val text = remainder.trim()
-        val mentionsSpotify = text.contains("spotify")
-
-        return if (mentionsSpotify) {
-            playOnline(context, text)
+        return if (text.contains("spotify")) {
+            playViaSpotify(context, text)
         } else {
-            playOffline(text) ?: playOnline(context, text)
+            playViaLocalMusicApp(context, text)
         }
     }
 
-    private fun playOffline(text: String): String? {
+    // ---- "play music" -> local Music app only ----
+
+    private fun playViaLocalMusicApp(context: Context, text: String): String {
+        val pm = context.packageManager
+
+        // CATEGORY_APP_MUSIC is how Android identifies "the" music player app on a
+        // given phone — same mechanism launchers/assistants use.
+        val musicAppIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MUSIC)
+        val resolveInfo = pm.resolveActivity(musicAppIntent, PackageManager.MATCH_DEFAULT_ONLY)
+
+        if (resolveInfo != null) {
+            val launchIntent = pm.getLaunchIntentForPackage(resolveInfo.activityInfo.packageName)
+            if (launchIntent != null) {
+                ActivityLauncher.launch(context, launchIntent)
+                // Opening the app alone doesn't start playback — most music apps
+                // need an actual song tapped. A media-button PLAY event asks
+                // whichever app owns the active media session to start/resume —
+                // works on many music apps, not guaranteed on all of them.
+                sendPlayMediaButton(context)
+                return "Opened your music app"
+            }
+        }
+
+        // No dedicated music app found on this phone at all — fall back to playing
+        // a local file directly so at least something plays.
+        return playLocalFileDirectly(text) ?: "I couldn't find a music app or any local songs"
+    }
+
+    private fun sendPlayMediaButton(context: Context) {
+        try {
+            val down = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY))
+            }
+            val up = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY))
+            }
+            context.sendOrderedBroadcast(down, null)
+            context.sendOrderedBroadcast(up, null)
+        } catch (e: Exception) {
+            // Not fatal — the app is still open even if this doesn't trigger playback.
+        }
+    }
+
+    private fun playLocalFileDirectly(text: String): String? {
         val musicDir = File(
             android.os.Environment.getExternalStoragePublicDirectory(
                 android.os.Environment.DIRECTORY_MUSIC
@@ -53,9 +89,8 @@ object MusicHandler {
         if (audioFiles.isEmpty()) return null
 
         val meaningfulWords = text.split(" ").filter { it.isNotBlank() && it !in genericFillers }
-
         val target = if (meaningfulWords.isEmpty()) {
-            audioFiles.first() // most recently added, no specific song requested
+            audioFiles.first()
         } else {
             val query = meaningfulWords.joinToString(" ").lowercase().replace(Regex("[^a-z0-9 ]"), "")
             audioFiles.firstOrNull { file ->
@@ -76,20 +111,32 @@ object MusicHandler {
         }
     }
 
-    private fun playOnline(context: Context, text: String): String {
+    // ---- "play spotify music" -> Spotify only, recently-played priority ----
+
+    private fun playViaSpotify(context: Context, text: String): String {
+        if (!isInstalled(context, SPOTIFY_PACKAGE)) {
+            return "Spotify isn't installed"
+        }
         val query = text.replace("spotify", "").trim()
 
-        if (isInstalled(context, SPOTIFY_PACKAGE)) {
-            return if (query.isBlank()) {
-                openAppOnly(context, SPOTIFY_PACKAGE, "Opened Spotify — your recently played is right there")
-            } else {
-                playViaSpotify(context, query)
+        return if (query.isBlank()) {
+            // No specific song named — open Spotify itself, which shows Spotify's
+            // own recently-played on its home screen (real playback history that
+            // only Spotify has, not something this app can read directly).
+            val intent = context.packageManager.getLaunchIntentForPackage(SPOTIFY_PACKAGE)
+                ?: return "Couldn't open Spotify"
+            ActivityLauncher.launch(context, intent)
+            "Opened Spotify — your recently played is right there"
+        } else {
+            val uri = Uri.parse("spotify:search:${Uri.encode(query)}")
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage(SPOTIFY_PACKAGE) }
+            try {
+                ActivityLauncher.launch(context, intent)
+                "Opened Spotify search for $query — tap the top result to play it"
+            } catch (e: Exception) {
+                "Found Spotify but couldn't open search for $query"
             }
         }
-        if (isInstalled(context, YT_MUSIC_PACKAGE)) {
-            return playViaYouTubeMusic(context, query.ifBlank { text })
-        }
-        return "I couldn't find Spotify or YouTube Music installed, and no matching local file"
     }
 
     private fun isInstalled(context: Context, packageName: String): Boolean {
@@ -98,34 +145,6 @@ object MusicHandler {
             true
         } catch (e: PackageManager.NameNotFoundException) {
             false
-        }
-    }
-
-    private fun openAppOnly(context: Context, packageName: String, message: String): String {
-        val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return "Couldn't open Spotify"
-        ActivityLauncher.launch(context, intent)
-        return message
-    }
-
-    private fun playViaSpotify(context: Context, query: String): String {
-        val uri = Uri.parse("spotify:search:${Uri.encode(query)}")
-        val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage(SPOTIFY_PACKAGE) }
-        return try {
-            ActivityLauncher.launch(context, intent)
-            "Opened Spotify search for $query — tap the top result to play it"
-        } catch (e: Exception) {
-            "Found Spotify but couldn't open search for $query"
-        }
-    }
-
-    private fun playViaYouTubeMusic(context: Context, query: String): String {
-        val uri = Uri.parse("https://music.youtube.com/search?q=${Uri.encode(query)}")
-        val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage(YT_MUSIC_PACKAGE) }
-        return try {
-            ActivityLauncher.launch(context, intent)
-            "Opened YouTube Music search for $query — tap the top result to play it"
-        } catch (e: Exception) {
-            "Found YouTube Music but couldn't open search for $query"
         }
     }
 }

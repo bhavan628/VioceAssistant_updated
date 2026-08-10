@@ -108,7 +108,9 @@ class AssistantForegroundService : Service() {
         updateNotification("Listening for your command...")
         wakeWordEngine?.pause()
         serviceScope.launch {
-            delay(200) // mic handoff - faster now with direct AudioRecord capture
+            delay(200) // mic handoff — much shorter now that we use direct AudioRecord
+                       // capture (synchronous stop/release) instead of Vosk's own
+                       // SpeechService wrapper, which needed the longer 700ms before.
             sttEngine?.startListening()
 
             delay(4000) // 4-second window to give a command
