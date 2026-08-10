@@ -20,6 +20,7 @@ import com.example.voiceassistant.handlers.MusicHandler
 import com.example.voiceassistant.handlers.MessageHandler
 import com.example.voiceassistant.handlers.NewsHandler
 import com.example.voiceassistant.handlers.OpenAppHandler
+import com.example.voiceassistant.handlers.SearchHandler
 import com.example.voiceassistant.handlers.TimeHandler
 
 class AssistantForegroundService : Service() {
@@ -139,17 +140,37 @@ class AssistantForegroundService : Service() {
             return
         }
 
+        if (category == CommandCategory.OPEN_APP) {
+            // Opens quietly — no spoken confirmation, just perform the action and go
+            // straight back to listening for the wake word. Note: this means
+            // failures (app not found) are also silent, not just successes.
+            OpenAppHandler.handle(this, remainder)
+            onCommandHandled()
+            return
+        }
+
+        if (category == CommandCategory.UNKNOWN) {
+            // Silent by request: the app can't distinguish "wake word falsely
+            // triggered, then picked up unrelated noise/speech" from "wake word was
+            // real, but the command genuinely wasn't recognized" — same code path
+            // either way. Since a false trigger should never announce itself, both
+            // cases now stay completely silent rather than speaking "Sorry".
+            onCommandHandled()
+            return
+        }
+
         val reply = when (category) {
             CommandCategory.TIME -> TimeHandler.handle(remainder)
             CommandCategory.MUSIC -> MusicHandler.handle(this, remainder)
-            CommandCategory.OPEN_APP -> OpenAppHandler.handle(this, remainder)
+            CommandCategory.OPEN_APP -> "" // unreachable, handled above
             CommandCategory.ALARM -> AlarmHandler.handle(this, remainder)
             CommandCategory.MESSAGE -> MessageHandler.handle(this, remainder)
             CommandCategory.CALL -> CallHandler.handle(this, remainder)
             CommandCategory.CALCULATION -> CalculationHandler.handle(remainder)
             CommandCategory.LOCK_SCREEN -> LockScreenHandler.handle(this)
-            CommandCategory.NEWS -> ""
-            CommandCategory.UNKNOWN -> "Sorry"
+            CommandCategory.SEARCH -> SearchHandler.handle(this, remainder)
+            CommandCategory.NEWS -> "" // unreachable, handled above
+            CommandCategory.UNKNOWN -> "" // unreachable, handled above
         }
         state = State.SPEAKING
         ttsEngine?.speak(reply)
